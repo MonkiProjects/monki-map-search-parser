@@ -1,0 +1,85 @@
+//
+//  MMSearchQueryParserTests.swift
+//  MonkiMapSearchParserTests
+//
+//  Created by Rémi Bardon on 19/10/2021.
+//  Copyright © 2021 Monki Projects. All rights reserved.
+//
+
+import XCTest
+@testable import MonkiMapSearchParser
+
+final class MonkiMapSearchParserTests: XCTestCase {
+	
+	func testSearchQueryDescriptionIsCorrect() {
+		let query = MMSearchQuery(filters: [
+			.kind("indoor_parkour_park"),
+			.creation(.greaterThanOrEqualTo("2021-01-01")),
+			.imagesCount(.between(1, and: 10)),
+		])
+		XCTAssertEqual(query.description, "kind:indoor_parkour_park created:>=2021-01-01 images:1..10")
+	}
+	
+	func testBasicFilterDecodingWorks() {
+		XCTAssertNoThrow(try MMSearchFilter(from: "kind:indoor_parkour_park"))
+	}
+	
+	func testFilterDecodingWithWhitespacesThrows() {
+		XCTAssertThrowsError(try MMSearchFilter(from: "  \t  kind:indoor_parkour_park       "))
+	}
+	
+	func testSimpleQueryDecodingWorks() {
+		let query = MMSearchQuery(filters: [
+			.kind("indoor_parkour_park"),
+			.creation(.greaterThanOrEqualTo("2021-01-01")),
+			.imagesCount(.between(1, and: 10)),
+		])
+		XCTAssertNoThrow(try MMSearchFilter(from: query.description))
+	}
+	
+	func testQueryDecodingSkipsWhitespaces() throws {
+		let res = try MMSearchQuery(from: "  created:>2021-01-01   ")
+		XCTAssertEqual(res, MMSearchQuery(.creation(.greaterThan("2021-01-01"))))
+	}
+	
+	func testQueryDecodingWithWhitespacesWorks() throws {
+		let query = MMSearchQuery(filters: [
+			.kind("indoor_parkour_park"),
+			.creation(.greaterThanOrEqualTo("2021-01-01")),
+			.imagesCount(.between(1, and: 10)),
+		])
+		let res = try MMSearchQuery(from: "     \(query)    \t ")
+		XCTAssertEqual(res, query)
+	}
+	
+	func testDecodingUsernameWorks() throws {
+		let res = try MMSearchFilter(from: "creator:@remi_bardon")
+		XCTAssertEqual(res, .creator(.username("remi_bardon")))
+	}
+	
+	func testDecodingUserIdWorks() throws {
+		// FIXME: Use `user_` prefix
+		let res = try MMSearchFilter(from: "creator:2f365abc-d755-4257-9641-5dad3068bc6a")
+		XCTAssertEqual(res, .creator(.userId("2f365abc-d755-4257-9641-5dad3068bc6a")))
+	}
+	
+	func testDecodingBadUserIdThrows() {
+		XCTAssertThrowsError(try MMSearchFilter(from: "G0000000-0000-4000-0000-000000000000"))
+	}
+	
+	func testDecodingPropertiesCountWorks() throws {
+		let res = try MMSearchFilter(from: "properties:benefit:5")
+		XCTAssertEqual(res, .propertiesCount(kind: "benefit", range: .equalTo(5)))
+	}
+	
+	func testDecodingPropertiesWorks() throws {
+		let res = try MMSearchFilter(from: "properties:feature/big_wall:true")
+		XCTAssertEqual(res, .hasProperty(kind: "feature", id: "big_wall", true))
+	}
+	
+	func testDecodingExtendedBoolWorks() throws {
+		let res = try MMSearchFilter(from: "draft:only")
+		XCTAssertEqual(res, .isDraft(.only))
+	}
+	
+}
