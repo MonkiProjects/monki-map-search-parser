@@ -24,6 +24,8 @@ public struct MMSearchQuery: Hashable {
 
 public indirect enum MMSearchFilter: Hashable {
 	
+	case string(String)
+	case quotedString(String)
 	case isDraft(ExtendedBoolToken)
 	case kind(String)
 	case category(String)
@@ -78,6 +80,10 @@ extension MMSearchFilter: CustomStringConvertible {
 	
 	public var description: String {
 		switch self {
+		case .string(let string):
+			return string
+		case .quotedString(let string):
+			return "\"\(string)\""
 		case .isDraft(let token):
 			return "draft:\(token)"
 		case .kind(let kind):
@@ -95,6 +101,14 @@ extension MMSearchFilter: CustomStringConvertible {
 		case let .hasProperty(kind: kind, id: id, bool):
 			return "properties:\(kind)/\(id):\(bool)"
 		}
+	}
+	
+}
+
+extension MMSearchFilter: CustomDebugStringConvertible {
+	
+	public var debugDescription: String {
+		return "\"\(self)\""
 	}
 	
 }

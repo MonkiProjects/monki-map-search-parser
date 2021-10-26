@@ -33,14 +33,22 @@ extension MMSearchQuery: Parseable {
 extension MMSearchFilter: Parseable {
 	
 	public init(from string: String) throws {
-		self = try Self.parser.run(sourceName: "", input: string)
+		self = try (Self.parser <* StringParser.eof).run(sourceName: "", input: string)
 	}
 	
 	static let parser: GenericParser<String, (), Self> = {
 		let string = StringParser.string
+		let noSpace = StringParser.space.noOccurence
+		let text = StringParser
+			.satisfy { $0.unicodeScalars.allSatisfy(CharacterSet.whitespaces.inverted.contains) }
+			.many1.stringValue
 		
 		let separator = StringParser.character(":")
+		let quote = StringParser.character("\"")
 		let identifier = (StringParser.alphaNumeric <|> StringParser.oneOf("_+-")).many1.stringValue
+		
+		let stringParser = Self.string <^> (noSpace *> text)
+		let quotedStringParser = Self.quotedString <^> (quote.attempt *> GenericParser.noneOf("\"").many.stringValue <* quote.attempt)
 		
 		let draftParser    = Self.isDraft  <^> (string("draft").attempt    *> separator *> ExtendedBoolToken.parser)
 		let kindParser     = Self.kind     <^> (string("kind").attempt     *> separator *> identifier)
@@ -63,6 +71,7 @@ extension MMSearchFilter: Parseable {
 		let propertiesParser = string("properties").attempt *> separator *> (propertiesCountParser <|> hasPropertyParser)
 		
 		let parser = GenericParser.choice([
+			quotedStringParser,
 			draftParser,
 			kindParser,
 			categoryParser,
@@ -70,6 +79,7 @@ extension MMSearchFilter: Parseable {
 			creationParser,
 			imagesCountParser,
 			propertiesParser,
+			stringParser,
 		])
 		
 		return parser

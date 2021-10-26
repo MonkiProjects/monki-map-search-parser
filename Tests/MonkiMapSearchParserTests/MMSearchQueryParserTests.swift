@@ -20,6 +20,40 @@ final class MonkiMapSearchParserTests: XCTestCase {
 		XCTAssertEqual(query.description, "kind:indoor_parkour_park created:>=2021-01-01 images:1..10")
 	}
 	
+	func testDecodingStringFilterWorks() {
+		XCTAssertNoThrow(try MMSearchFilter(from: "IMAX"))
+	}
+	
+	func testDecodingStringFilterWithSpacesThrowsError() {
+		XCTAssertThrowsError(try MMSearchFilter(from: "   La Dame du Lac"))
+		XCTAssertThrowsError(try MMSearchFilter(from: "La Dame du Lac   "))
+		XCTAssertThrowsError(try MMSearchFilter(from: "\tLa Dame du Lac"))
+	}
+	
+	func testDecodingStringFilterWithDiacriticsWorks() {
+		XCTAssertEqual(try MMSearchFilter(from: "Äé':/"), .string("Äé':/"))
+	}
+	
+	func testDecodingStringQueryWorks() {
+		let expected = MMSearchQuery(.string("La"), .string("Dame"), .string("du"), .string("Lac"))
+		XCTAssertEqual(try MMSearchQuery(from: expected.description), expected)
+		XCTAssertEqual(try MMSearchQuery(from: "La Dame du Lac"), expected)
+		XCTAssertEqual(try MMSearchQuery(from: "La Dame du Lac     "), expected)
+		XCTAssertEqual(try MMSearchQuery(from: "La Dame du Lac  \t   "), expected)
+		XCTAssertEqual(try MMSearchQuery(from: " \t   La Dame du Lac     "), expected)
+		XCTAssertEqual(try MMSearchQuery(from: "     La Dame du Lac"), expected)
+	}
+	
+	func testDecodingQuotedStringFilterWorks() {
+		XCTAssertEqual(try MMSearchFilter(from: "\"La Dame du Lac\""), .quotedString("La Dame du Lac"))
+	}
+	
+	func testDecodingQuotedStringQueryWorks() {
+		let expected = MMSearchQuery(.quotedString("La Dame du Lac"), .quotedString("Another text"))
+		XCTAssertEqual(try MMSearchQuery(from: expected.description), expected)
+		XCTAssertEqual(try MMSearchQuery(from: "   \"La Dame du Lac\"  \t  \"Another text\" "), expected)
+	}
+	
 	func testBasicFilterDecodingWorks() {
 		XCTAssertNoThrow(try MMSearchFilter(from: "kind:indoor_parkour_park"))
 	}
@@ -34,7 +68,7 @@ final class MonkiMapSearchParserTests: XCTestCase {
 			.creation(.greaterThanOrEqualTo("2021-01-01")),
 			.imagesCount(.between(1, and: 10)),
 		])
-		XCTAssertNoThrow(try MMSearchFilter(from: query.description))
+		XCTAssertNoThrow(try MMSearchQuery(from: query.description))
 	}
 	
 	func testQueryDecodingSkipsWhitespaces() throws {
@@ -64,7 +98,7 @@ final class MonkiMapSearchParserTests: XCTestCase {
 	}
 	
 	func testDecodingBadUserIdThrows() {
-		XCTAssertThrowsError(try MMSearchFilter(from: "G0000000-0000-4000-0000-000000000000"))
+		XCTAssertThrowsError(try MMSearchFilter(from: "creator:G0000000-0000-4000-0000-000000000000"))
 	}
 	
 	func testDecodingPropertiesCountWorks() throws {

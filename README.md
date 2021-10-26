@@ -4,6 +4,16 @@ This repository defines the grammar and the parser for searching places in the M
 
 ## Search grammar
 
+### Search based on a place's name or summary
+
+| Qualifier | Example |
+| --------- | ------- |
+| `…` (anything that does not match other qualifiers) | `La Dame du Lac` includes places which contain "la", "dame", "du" **and** "lac" in their name **or** summary. |
+| `"…"` | `"La Dame du Lac"` includes places which contain "la dame du lac" in their name **or** summary. **This keeps the order of words**. |
+
+These qualifiers are case-insensitive (i.e. "A" = "a"), and diacritics-sensitive (i.e. "à" ≠ "a").
+One day we will make it diacritics-insensitive too, to make searching for places easier.
+
 ### Search based on whether a place is a draft
 
 | Qualifier | Example |
