@@ -1,5 +1,7 @@
 # Monki Map Search Parser
 
+[![Tests](https://github.com/MonkiProjects/monki-map-search-parser/actions/workflows/test.yml/badge.svg)](https://github.com/MonkiProjects/monki-map-search-parser/actions/workflows/test.yml)
+
 This repository defines the grammar and the parser for searching places in the Monki Map app.
 
 ## Search grammar
