@@ -38,7 +38,7 @@ extension MMSearchQuery: CustomStringConvertible {
 
 public indirect enum MMSearchFilter: Hashable {
 	
-	case string(String)
+	case word(String)
 	case quotedString(String)
 	case isDraft(ExtendedBoolToken)
 	case kind(String)
@@ -57,7 +57,7 @@ extension MMSearchFilter: CustomStringConvertible {
 	
 	public var description: String {
 		switch self {
-		case .string(let string):
+		case .word(let string):
 			return string
 		case .quotedString(let string):
 			return "\"\(string)\""
@@ -163,13 +163,18 @@ extension DateToken: CustomStringConvertible {
 extension DateToken: ExpressibleByStringLiteral {
 	
 	public init(stringLiteral value: StringLiteralType) {
-		self.init(string: value)!
+		guard let dateToken = Self(string: value) else {
+			preconditionFailure("Invalid date literal")
+		}
+		
+		self = dateToken
 	}
 	
 }
 
 extension RangeToken: CustomStringConvertible {
 	
+	// swiftlint:disable identifier_name
 	public var description: String {
 		switch self {
 		case .equalTo(let n):
@@ -182,9 +187,10 @@ extension RangeToken: CustomStringConvertible {
 			return "<=\(n)"
 		case .greaterThanOrEqualTo(let n):
 			return ">=\(n)"
-		case .between(let x, and: let y):
+		case let .between(x, and: y):
 			return "\(x)..\(y)"
 		}
 	}
+	// swiftlint:enable identifier_name
 	
 }

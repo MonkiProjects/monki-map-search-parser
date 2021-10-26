@@ -9,7 +9,7 @@
 import XCTest
 @testable import MonkiMapSearchParser
 
-final class MonkiMapSearchParserTests: XCTestCase {
+internal final class MonkiMapSearchParserTests: XCTestCase {
 	
 	func testSearchQueryDescriptionIsCorrect() {
 		let query = MMSearchQuery(filters: [
@@ -31,11 +31,11 @@ final class MonkiMapSearchParserTests: XCTestCase {
 	}
 	
 	func testDecodingStringFilterWithDiacriticsWorks() {
-		XCTAssertEqual(try MMSearchFilter(from: "Äé':/"), .string("Äé':/"))
+		XCTAssertEqual(try MMSearchFilter(from: "Äé':/"), .word("Äé':/"))
 	}
 	
 	func testDecodingStringQueryWorks() {
-		let expected = MMSearchQuery(.string("La"), .string("Dame"), .string("du"), .string("Lac"))
+		let expected = MMSearchQuery(.word("La"), .word("Dame"), .word("du"), .word("Lac"))
 		XCTAssertEqual(try MMSearchQuery(from: expected.description), expected)
 		XCTAssertEqual(try MMSearchQuery(from: "La Dame du Lac"), expected)
 		XCTAssertEqual(try MMSearchQuery(from: "La Dame du Lac     "), expected)

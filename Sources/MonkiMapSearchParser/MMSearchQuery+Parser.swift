@@ -8,7 +8,7 @@
 
 import SwiftParsec
 
-protocol Parseable {
+internal protocol Parseable {
 	
 	static var parser: GenericParser<String, (), Self> { get }
 	
@@ -16,17 +16,13 @@ protocol Parseable {
 
 fileprivate let string = StringParser.string
 fileprivate let character = StringParser.character
-fileprivate let word = StringParser
+fileprivate let wordParser = StringParser
 	.satisfy { $0.unicodeScalars.allSatisfy(CharacterSet.whitespaces.inverted.contains) }
 	.many1.stringValue
 
 extension MMSearchQuery: Parseable {
 	
-	public init(from string: String) throws {
-		self = try Self.parser.run(sourceName: "", input: string)
-	}
-	
-	static let parser: GenericParser<String, (), Self> = {
+	internal static let parser: GenericParser<String, (), Self> = {
 		let spaces = StringParser.spaces
 		let filters = MMSearchFilter.parser.dividedBy1(spaces)
 		let query = spaces *> filters <* spaces <* StringParser.eof
@@ -34,33 +30,58 @@ extension MMSearchQuery: Parseable {
 		return Self.init(filters:) <^> query
 	}()
 	
+	public init(from string: String) throws {
+		self = try Self.parser.run(sourceName: "", input: string)
+	}
+	
 }
 
 extension MMSearchFilter: Parseable {
 	
-	public init(from string: String) throws {
-		self = try (Self.parser <* StringParser.eof).run(sourceName: "", input: string)
-	}
+	private static let separator = character(":")
+	private static let identifier = (StringParser.alphaNumeric <|> StringParser.oneOf("_+-")).many1.stringValue
 	
-	static let parser: GenericParser<String, (), Self> = {
-		let string = StringParser.string
-		
-		let noSpace = StringParser.space.noOccurence
-		
-		let separator = character(":")
+	internal static let stringParser: GenericParser<String, (), Self> = {
+		return Self.word <^> (StringParser.space.noOccurence *> wordParser)
+	}()
+	
+	internal static let quotedStringParser: GenericParser<String, (), Self> = {
 		let quote = character("\"")
-		let identifier = (StringParser.alphaNumeric <|> StringParser.oneOf("_+-")).many1.stringValue
-		
-		let stringParser = noSpace *> word
-		let quotedStringParser = quote.attempt *> GenericParser.noneOf("\"").many.stringValue <* quote
-		
-		let draftParser    = string("draft").attempt    *> separator *> ExtendedBoolToken.parser
-		let kindParser     = string("kind").attempt     *> separator *> identifier
-		let categoryParser = string("category").attempt *> separator *> identifier
-		let creatorParser  = string("creator").attempt  *> separator *> UserToken.parser
-		let creationParser = string("created").attempt  *> separator *> RangeToken<DateToken>.parser
-		
-		let imagesCountParser = string("images").attempt *> separator *> RangeToken<UInt8>.parser
+		let parser = quote.attempt *> GenericParser.noneOf("\"").many.stringValue <* quote
+		return Self.quotedString <^> parser
+	}()
+	
+	internal static let isDraftParser: GenericParser<String, (), Self> = {
+		let parser = string("draft").attempt *> Self.separator *> ExtendedBoolToken.parser
+		return Self.isDraft <^> parser
+	}()
+	
+	internal static let kindParser: GenericParser<String, (), Self> = {
+		let parser = string("kind").attempt *> separator *> identifier
+		return Self.kind <^> parser
+	}()
+	
+	internal static let categoryParser: GenericParser<String, (), Self> = {
+		let parser = string("category").attempt *> separator *> identifier
+		return Self.category <^> parser
+	}()
+	
+	internal static let creatorParser: GenericParser<String, (), Self> = {
+		let parser = string("creator").attempt *> separator *> UserToken.parser
+		return Self.creator <^> parser
+	}()
+	
+	internal static let creationParser: GenericParser<String, (), Self> = {
+		let parser = string("created").attempt  *> separator *> RangeToken<DateToken>.parser
+		return Self.creation <^> parser
+	}()
+	
+	internal static let imagesCountParser: GenericParser<String, (), Self> = {
+		let parser = string("images").attempt *> separator *> RangeToken<UInt8>.parser
+		return Self.imagesCount <^> parser
+	}()
+	
+	internal static let propertiesParser: GenericParser<String, (), Self> = {
 		let propertiesCountParser = GenericParser.lift2(
 			Self.propertiesCount,
 			parser1: identifier,
@@ -73,28 +94,33 @@ extension MMSearchFilter: Parseable {
 			parser3: separator *> Bool.parser
 		).attempt
 		let proprtiesPrefix = string("properties").attempt *> separator
-		let propertiesParser = proprtiesPrefix *> (propertiesCountParser <|> hasPropertyParser)
-		
-		let parser = GenericParser.choice([
-			Self.quotedString <^> quotedStringParser,
-			Self.isDraft      <^> draftParser,
-			Self.kind         <^> kindParser,
-			Self.category     <^> categoryParser,
-			Self.creator      <^> creatorParser,
-			Self.creation     <^> creationParser,
-			Self.imagesCount  <^> imagesCountParser,
-			propertiesParser,
-			Self.string <^> stringParser,
-		])
-		
+		let parser = proprtiesPrefix *> (propertiesCountParser <|> hasPropertyParser)
 		return parser
 	}()
+	
+	internal static let parser: GenericParser<String, (), Self> = {
+		return GenericParser.choice([
+			Self.quotedStringParser,
+			Self.isDraftParser,
+			Self.kindParser,
+			Self.categoryParser,
+			Self.creatorParser,
+			Self.creationParser,
+			Self.imagesCountParser,
+			Self.propertiesParser,
+			Self.stringParser,
+		])
+	}()
+	
+	public init(from string: String) throws {
+		self = try (Self.parser <* StringParser.eof).run(sourceName: "", input: string)
+	}
 	
 }
 
 extension ExtendedBoolToken: Parseable {
 	
-	static let parser: GenericParser<String, (), Self> = {
+	internal static let parser: GenericParser<String, (), Self> = {
 		let boolParser = Self.bool <^> Bool.parser
 		let onlyParser = string("only") *> GenericParser(result: Self.only)
 		
@@ -105,8 +131,8 @@ extension ExtendedBoolToken: Parseable {
 
 extension UserToken: Parseable {
 	
-	static let parser: GenericParser<String, (), Self> = {
-		let username = string("@").attempt *> word <?> "username"
+	internal static let parser: GenericParser<String, (), Self> = {
+		let username = string("@").attempt *> wordParser <?> "username"
 		let uuid = (StringParser.hexadecimalDigit <|> character("-")).count(36).stringValue <?> "UUID"
 		
 		return GenericParser.choice([
@@ -119,7 +145,7 @@ extension UserToken: Parseable {
 
 extension DateToken: Parseable {
 	
-	static let parser: GenericParser<String, (), Self> = {
+	internal static let parser: GenericParser<String, (), Self> = {
 		let char = GenericParser.decimalDigit <|> StringParser.oneOf(":+-TWZ")
 		return (Self.init(string:) <^> char.many1.stringValue).flatMap { value in
 			if let value = value {
@@ -134,11 +160,11 @@ extension DateToken: Parseable {
 
 extension RangeToken: Parseable {
 	
-	static var parser: GenericParser<String, (), Self> {
+	internal static var parser: GenericParser<String, (), Self> {
 		return GenericParser.fail("Not implemented")
 	}
 	
-	static func parser(value: GenericParser<String, (), T>) -> GenericParser<String, (), Self> {
+	internal static func parser(value: GenericParser<String, (), T>) -> GenericParser<String, (), Self> {
 		let geParser    =   string(">=").attempt *> value
 		let gtParser    = character(">").attempt *> value
 		let leParser    =   string("<=").attempt *> value
@@ -159,7 +185,7 @@ extension RangeToken: Parseable {
 
 extension RangeToken where T: Parseable {
 	
-	static var parser: GenericParser<String, (), Self> {
+	internal static var parser: GenericParser<String, (), Self> {
 		return Self.parser(value: T.parser)
 	}
 	
@@ -167,7 +193,7 @@ extension RangeToken where T: Parseable {
 
 extension RangeToken where T == String {
 	
-	static var parser: GenericParser<String, (), Self> {
+	internal static var parser: GenericParser<String, (), Self> {
 		let dot = character(".")
 		let value = StringParser.anyCharacter.manyTill(.space <|> dot).stringValue
 		return Self.parser(value: value)
@@ -179,7 +205,7 @@ import Foundation
 
 extension Bool: Parseable {
 	
-	static let parser: GenericParser<String, (), Self> = {
+	internal static let parser: GenericParser<String, (), Self> = {
 		let trueParser  = string("true")  *> GenericParser(result: true)
 		let falseParser = string("false") *> GenericParser(result: false)
 		
@@ -190,7 +216,7 @@ extension Bool: Parseable {
 
 extension UInt8: Parseable {
 	
-	static let parser: GenericParser<String, (), Self> = {
+	internal static let parser: GenericParser<String, (), Self> = {
 		return (UInt8.init(_:) <^> StringParser.decimalDigit.many1.stringValue).flatMap { value in
 			if let value = value {
 				return GenericParser(result: value)
