@@ -14,6 +14,12 @@ protocol Parseable {
 	
 }
 
+fileprivate let string = StringParser.string
+fileprivate let character = StringParser.character
+fileprivate let word = StringParser
+	.satisfy { $0.unicodeScalars.allSatisfy(CharacterSet.whitespaces.inverted.contains) }
+	.many1.stringValue
+
 extension MMSearchQuery: Parseable {
 	
 	public init(from string: String) throws {
@@ -38,26 +44,23 @@ extension MMSearchFilter: Parseable {
 	
 	static let parser: GenericParser<String, (), Self> = {
 		let string = StringParser.string
-		let character = StringParser.character
+		
 		let noSpace = StringParser.space.noOccurence
-		let text = StringParser
-			.satisfy { $0.unicodeScalars.allSatisfy(CharacterSet.whitespaces.inverted.contains) }
-			.many1.stringValue
 		
 		let separator = character(":")
 		let quote = character("\"")
 		let identifier = (StringParser.alphaNumeric <|> StringParser.oneOf("_+-")).many1.stringValue
 		
-		let stringParser = Self.string <^> (noSpace *> text)
-		let quotedStringParser = Self.quotedString <^> (quote.attempt *> GenericParser.noneOf("\"").many.stringValue <* quote.attempt)
+		let stringParser = noSpace *> word
+		let quotedStringParser = quote.attempt *> GenericParser.noneOf("\"").many.stringValue <* quote
 		
-		let draftParser    = Self.isDraft  <^> (string("draft").attempt    *> separator *> ExtendedBoolToken.parser)
-		let kindParser     = Self.kind     <^> (string("kind").attempt     *> separator *> identifier)
-		let categoryParser = Self.category <^> (string("category").attempt *> separator *> identifier)
-		let creatorParser  = Self.creator  <^> (string("creator").attempt  *> separator *> UserToken.parser)
-		let creationParser = Self.creation <^> (string("created").attempt  *> separator *> RangeToken.parser)
+		let draftParser    = string("draft").attempt    *> separator *> ExtendedBoolToken.parser
+		let kindParser     = string("kind").attempt     *> separator *> identifier
+		let categoryParser = string("category").attempt *> separator *> identifier
+		let creatorParser  = string("creator").attempt  *> separator *> UserToken.parser
+		let creationParser = string("created").attempt  *> separator *> RangeToken<DateToken>.parser
 		
-		let imagesCountParser = Self.imagesCount <^> (string("images").attempt *> separator *> RangeToken.parser)
+		let imagesCountParser = string("images").attempt *> separator *> RangeToken<UInt8>.parser
 		let propertiesCountParser = GenericParser.lift2(
 			Self.propertiesCount,
 			parser1: identifier,
@@ -69,18 +72,19 @@ extension MMSearchFilter: Parseable {
 			parser2: character("/") *> identifier,
 			parser3: separator *> Bool.parser
 		).attempt
-		let propertiesParser = string("properties").attempt *> separator *> (propertiesCountParser <|> hasPropertyParser)
+		let proprtiesPrefix = string("properties").attempt *> separator
+		let propertiesParser = proprtiesPrefix *> (propertiesCountParser <|> hasPropertyParser)
 		
 		let parser = GenericParser.choice([
-			quotedStringParser,
-			draftParser,
-			kindParser,
-			categoryParser,
-			creatorParser,
-			creationParser,
-			imagesCountParser,
+			Self.quotedString <^> quotedStringParser,
+			Self.isDraft      <^> draftParser,
+			Self.kind         <^> kindParser,
+			Self.category     <^> categoryParser,
+			Self.creator      <^> creatorParser,
+			Self.creation     <^> creationParser,
+			Self.imagesCount  <^> imagesCountParser,
 			propertiesParser,
-			stringParser,
+			Self.string <^> stringParser,
 		])
 		
 		return parser
@@ -88,37 +92,32 @@ extension MMSearchFilter: Parseable {
 	
 }
 
-extension MMSearchFilter.ExtendedBoolToken: Parseable {
+extension ExtendedBoolToken: Parseable {
 	
 	static let parser: GenericParser<String, (), Self> = {
-		let string = StringParser.string
-		
-		let boolParser  = Self.bool <^> Bool.parser
-		let onlyParser  = string("only") *> GenericParser(result: Self.only)
+		let boolParser = Self.bool <^> Bool.parser
+		let onlyParser = string("only") *> GenericParser(result: Self.only)
 		
 		return boolParser <|> onlyParser
 	}()
 	
 }
 
-extension MMSearchFilter.UserToken: Parseable {
+extension UserToken: Parseable {
 	
 	static let parser: GenericParser<String, (), Self> = {
-		let string = StringParser.string
-		let character = StringParser.character
+		let username = string("@").attempt *> word <?> "username"
+		let uuid = (StringParser.hexadecimalDigit <|> character("-")).count(36).stringValue <?> "UUID"
 		
-		let username = StringParser.noneOf(" ").many1.stringValue <?> "username"
-		let userId = (StringParser.hexadecimalDigit <|> character("-")).count(36).stringValue <?> "UUID"
-		
-		let usernameParser = Self.username <^> (string("@").attempt *> username)
-		let userIdParser = Self.userId <^> userId
-		
-		return usernameParser <|> userIdParser
+		return GenericParser.choice([
+			Self.username <^> username,
+			Self.userId   <^> uuid,
+		])
 	}()
 	
 }
 
-extension MMSearchFilter.DateToken: Parseable {
+extension DateToken: Parseable {
 	
 	static let parser: GenericParser<String, (), Self> = {
 		let char = GenericParser.decimalDigit <|> StringParser.oneOf(":+-TWZ")
@@ -133,29 +132,32 @@ extension MMSearchFilter.DateToken: Parseable {
 	
 }
 
-extension MMSearchFilter.RangeToken: Parseable {
+extension RangeToken: Parseable {
 	
 	static var parser: GenericParser<String, (), Self> {
 		return GenericParser.fail("Not implemented")
 	}
 	
 	static func parser(value: GenericParser<String, (), T>) -> GenericParser<String, (), Self> {
-		let string = StringParser.string
-		let character = StringParser.character
+		let geParser    =   string(">=").attempt *> value
+		let gtParser    = character(">").attempt *> value
+		let leParser    =   string("<=").attempt *> value
+		let ltParser    = character("<").attempt *> value
+		let rangeParser =   string("..")         *> value
 		
-		let geParser = Self.greaterThanOrEqualTo <^> (string(">=").attempt *> value)
-		let gtParser = Self.greaterThan          <^> (character(">").attempt *> value)
-		let leParser = Self.lessThanOrEqualTo    <^> (string("<=").attempt *> value)
-		let ltParser = Self.lessThan             <^> (character("<").attempt *> value)
-		let rangeParser = GenericParser.lift2(Self.between, parser1: value, parser2: (string("..") *> value)).attempt
-		let eqParser = Self.equalTo              <^> value
-		
-		return geParser <|> gtParser <|> leParser <|> ltParser <|> rangeParser <|> eqParser
+		return GenericParser.choice([
+			Self.greaterThanOrEqualTo <^> geParser,
+			Self.greaterThan          <^> gtParser,
+			Self.lessThanOrEqualTo    <^> leParser,
+			Self.lessThan             <^> ltParser,
+			GenericParser.lift2(Self.between, parser1: value, parser2: rangeParser).attempt,
+			Self.equalTo              <^> value,
+		])
 	}
 	
 }
 
-extension MMSearchFilter.RangeToken where T: Parseable {
+extension RangeToken where T: Parseable {
 	
 	static var parser: GenericParser<String, (), Self> {
 		return Self.parser(value: T.parser)
@@ -163,10 +165,10 @@ extension MMSearchFilter.RangeToken where T: Parseable {
 	
 }
 
-extension MMSearchFilter.RangeToken where T == String {
+extension RangeToken where T == String {
 	
 	static var parser: GenericParser<String, (), Self> {
-		let dot = StringParser.character(".")
+		let dot = character(".")
 		let value = StringParser.anyCharacter.manyTill(.space <|> dot).stringValue
 		return Self.parser(value: value)
 	}
@@ -178,8 +180,6 @@ import Foundation
 extension Bool: Parseable {
 	
 	static let parser: GenericParser<String, (), Self> = {
-		let string = StringParser.string
-		
 		let trueParser  = string("true")  *> GenericParser(result: true)
 		let falseParser = string("false") *> GenericParser(result: false)
 		

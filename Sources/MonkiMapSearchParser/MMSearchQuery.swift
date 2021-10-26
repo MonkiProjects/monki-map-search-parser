@@ -8,6 +8,8 @@
 
 import Foundation
 
+// MARK: - Search queries
+
 public struct MMSearchQuery: Hashable {
 	
 	public let filters: [MMSearchFilter]
@@ -22,6 +24,18 @@ public struct MMSearchQuery: Hashable {
 	
 }
 
+// MARK: String conversions
+
+extension MMSearchQuery: CustomStringConvertible {
+	
+	public var description: String {
+		return self.filters.map(String.init(describing:)).joined(separator: " ")
+	}
+	
+}
+
+// MARK: - Search filters
+
 public indirect enum MMSearchFilter: Hashable {
 	
 	case string(String)
@@ -35,46 +49,9 @@ public indirect enum MMSearchFilter: Hashable {
 	case propertiesCount(kind: String, range: RangeToken<UInt8>)
 	case hasProperty(kind: String, id: String, Bool)
 	
-	public enum ExtendedBoolToken: Hashable {
-		case bool(Bool), only
-	}
-	
-	public enum UserToken: Hashable {
-		case userId(String), username(String)
-	}
-	
-	public struct DateToken: Hashable {
-		
-		public let stringValue: String
-		public let dateValue: Date
-		
-		public init?(string: String) {
-			self.stringValue = string
-			
-			let formatter = ISO8601DateFormatter()
-			formatter.formatOptions = [.withFullDate]
-			guard let date = formatter.date(from: "2021-01-01") else { return nil }
-			self.dateValue = date
-		}
-		
-	}
-	
-	public enum RangeToken<T>: Hashable where T: Hashable {
-		case equalTo(T)
-		case lessThan(T), greaterThan(T)
-		case lessThanOrEqualTo(T), greaterThanOrEqualTo(T)
-		case between(T, and: T)
-	}
-	
 }
 
-extension MMSearchQuery: CustomStringConvertible {
-	
-	public var description: String {
-		return self.filters.map(String.init(describing:)).joined(separator: " ")
-	}
-	
-}
+// MARK: String conversions
 
 extension MMSearchFilter: CustomStringConvertible {
 	
@@ -113,7 +90,42 @@ extension MMSearchFilter: CustomDebugStringConvertible {
 	
 }
 
-extension MMSearchFilter.ExtendedBoolToken: CustomStringConvertible {
+// MARK: - Search tokens
+
+public enum ExtendedBoolToken: Hashable {
+	case bool(Bool), only
+}
+
+public enum UserToken: Hashable {
+	case userId(String), username(String)
+}
+
+public struct DateToken: Hashable {
+	
+	public let stringValue: String
+	public let dateValue: Date
+	
+	public init?(string: String) {
+		self.stringValue = string
+		
+		let formatter = ISO8601DateFormatter()
+		formatter.formatOptions = [.withFullDate]
+		guard let date = formatter.date(from: "2021-01-01") else { return nil }
+		self.dateValue = date
+	}
+	
+}
+
+public enum RangeToken<T>: Hashable where T: Hashable {
+	case equalTo(T)
+	case lessThan(T), greaterThan(T)
+	case lessThanOrEqualTo(T), greaterThanOrEqualTo(T)
+	case between(T, and: T)
+}
+
+// MARK: String conversions
+
+extension ExtendedBoolToken: CustomStringConvertible {
 	
 	public var description: String {
 		switch self {
@@ -128,7 +140,7 @@ extension MMSearchFilter.ExtendedBoolToken: CustomStringConvertible {
 	
 }
 
-extension MMSearchFilter.UserToken: CustomStringConvertible {
+extension UserToken: CustomStringConvertible {
 	
 	public var description: String {
 		switch self {
@@ -140,7 +152,7 @@ extension MMSearchFilter.UserToken: CustomStringConvertible {
 	}
 	
 }
-extension MMSearchFilter.DateToken: CustomStringConvertible {
+extension DateToken: CustomStringConvertible {
 	
 	public var description: String {
 		return self.stringValue
@@ -148,7 +160,7 @@ extension MMSearchFilter.DateToken: CustomStringConvertible {
 	
 }
 
-extension MMSearchFilter.DateToken: ExpressibleByStringLiteral {
+extension DateToken: ExpressibleByStringLiteral {
 	
 	public init(stringLiteral value: StringLiteralType) {
 		self.init(string: value)!
@@ -156,7 +168,7 @@ extension MMSearchFilter.DateToken: ExpressibleByStringLiteral {
 	
 }
 
-extension MMSearchFilter.RangeToken: CustomStringConvertible {
+extension RangeToken: CustomStringConvertible {
 	
 	public var description: String {
 		switch self {
