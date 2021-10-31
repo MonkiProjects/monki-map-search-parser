@@ -34,6 +34,16 @@ extension MMSearchQuery: CustomStringConvertible {
 	
 }
 
+// MARK: Debug string conversions
+
+extension MMSearchQuery: CustomDebugStringConvertible {
+	
+	public var debugDescription: String {
+		return self.filters.map(String.init(reflecting:)).joined(separator: " ")
+	}
+	
+}
+
 // MARK: - Search filters
 
 public indirect enum MMSearchFilter: Hashable {
@@ -82,10 +92,33 @@ extension MMSearchFilter: CustomStringConvertible {
 	
 }
 
+// MARK: Debug string conversions
+
 extension MMSearchFilter: CustomDebugStringConvertible {
 	
 	public var debugDescription: String {
-		return "\"\(self)\""
+		switch self {
+		case .word(let string):
+			return ".word(\(string))"
+		case .quotedString(let string):
+			return ".quotedString(\(string))"
+		case .isDraft(let token):
+			return ".isDraft(\(token))"
+		case .kind(let kind):
+			return ".kind(\(kind))"
+		case .category(let category):
+			return ".category(\(category))"
+		case .creator(let creator):
+			return ".creator(\(creator))"
+		case .imagesCount(let range):
+			return ".imagesCount(\(range))"
+		case .creation(let range):
+			return ".creation(\(range))"
+		case let .propertiesCount(kind: kind, range: range):
+			return ".propertiesCount(\(kind),\(range))"
+		case let .hasProperty(kind: kind, id: id, bool):
+			return ".hasProperty(\(kind),\(id),\(bool))"
+		}
 	}
 	
 }
@@ -152,6 +185,7 @@ extension UserToken: CustomStringConvertible {
 	}
 	
 }
+
 extension DateToken: CustomStringConvertible {
 	
 	public var description: String {
@@ -189,6 +223,67 @@ extension RangeToken: CustomStringConvertible {
 			return ">=\(n)"
 		case let .between(x, and: y):
 			return "\(x)..\(y)"
+		}
+	}
+	// swiftlint:enable identifier_name
+	
+}
+
+// MARK: Debug string conversions
+
+extension ExtendedBoolToken: CustomDebugStringConvertible {
+	
+	public var debugDescription: String {
+		switch self {
+		case .bool(true):
+			return ".bool(true)"
+		case .bool(false):
+			return ".bool(false)"
+		case .only:
+			return ".only"
+		}
+	}
+	
+}
+
+extension UserToken: CustomDebugStringConvertible {
+	
+	public var debugDescription: String {
+		switch self {
+		case .userId(let userId):
+			return ".userId(\(userId))"
+		case .username(let username):
+			return ".username(\(username))"
+		}
+	}
+	
+}
+
+extension DateToken: CustomDebugStringConvertible {
+	
+	public var debugDescription: String {
+		return ".date(\(self.stringValue))"
+	}
+	
+}
+
+extension RangeToken: CustomDebugStringConvertible {
+	
+	// swiftlint:disable identifier_name
+	public var debugDescription: String {
+		switch self {
+		case .equalTo(let n):
+			return ".eq(\(n))"
+		case .lessThan(let n):
+			return ".lt(\(n))"
+		case .greaterThan(let n):
+			return ".gt(\(n))"
+		case .lessThanOrEqualTo(let n):
+			return ".le(\(n))"
+		case .greaterThanOrEqualTo(let n):
+			return ".ge(\(n))"
+		case let .between(x, and: y):
+			return ".between(\(x),\(y))"
 		}
 	}
 	// swiftlint:enable identifier_name
