@@ -24,7 +24,7 @@ extension MMSearchQuery: Parseable {
 	
 	internal static let parser: GenericParser<String, (), Self> = {
 		let spaces = StringParser.spaces
-		let filters = MMSearchFilter.parser.dividedBy1(spaces)
+		let filters = MMSearchFilter.parser.dividedBy(spaces)
 		let query = spaces *> filters <* spaces <* StringParser.eof
 		
 		return Self.init(filters:) <^> query

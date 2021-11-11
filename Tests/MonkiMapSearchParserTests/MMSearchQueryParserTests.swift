@@ -133,4 +133,9 @@ internal final class MonkiMapSearchParserTests: XCTestCase {
 		XCTAssertFalse(MMSearchQuery.validate("properties:feature/big_wall:true properties:feature/med"))
 	}
 	
+	func testEmptyQueryIsValid() {
+		XCTAssertNoThrow(try MMSearchQuery(from: ""))
+		XCTAssertTrue(MMSearchQuery.validate(""))
+	}
+	
 }
