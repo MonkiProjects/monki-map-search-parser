@@ -34,6 +34,15 @@ extension MMSearchQuery: Parseable {
 		self = try Self.parser.run(sourceName: "", input: string)
 	}
 	
+	public static func validate(_ string: String) -> Bool {
+		do {
+			_ = try Self.parser.run(sourceName: "", input: string)
+			return true
+		} catch {
+			return false
+		}
+	}
+	
 }
 
 extension MMSearchFilter: Parseable {
@@ -93,7 +102,7 @@ extension MMSearchFilter: Parseable {
 			parser2: character("/") *> identifier,
 			parser3: separator *> Bool.parser
 		).attempt
-		let proprtiesPrefix = string("properties").attempt *> separator
+		let proprtiesPrefix = (string("properties") *> separator).attempt
 		let parser = proprtiesPrefix *> (propertiesCountParser <|> hasPropertyParser)
 		return parser
 	}()

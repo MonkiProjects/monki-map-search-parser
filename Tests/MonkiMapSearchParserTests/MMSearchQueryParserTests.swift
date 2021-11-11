@@ -127,4 +127,10 @@ internal final class MonkiMapSearchParserTests: XCTestCase {
 		XCTAssertEqual(MMSearchQuery(.category("")).description, "category:")
 	}
 	
+	func testOneBadQualifierDoesntBreakAQuery() {
+		XCTAssertTrue(MMSearchQuery.validate("properties:feature/big_wall:true"))
+		XCTAssertTrue(MMSearchQuery.validate("properties:feature/big_wall:true properties"))
+		XCTAssertFalse(MMSearchQuery.validate("properties:feature/big_wall:true properties:feature/med"))
+	}
+	
 }
