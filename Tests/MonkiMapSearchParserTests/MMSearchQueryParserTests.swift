@@ -116,4 +116,15 @@ internal final class MonkiMapSearchParserTests: XCTestCase {
 		XCTAssertEqual(res, .isDraft(.only))
 	}
 	
+	func testQualifierPrefixIsTreatedAsTextIfNoColon() throws {
+		let res = try MMSearchQuery(from: "category")
+		XCTAssertEqual(res, MMSearchQuery(.word("category")))
+	}
+	
+	func testQualifierSuffixIsEmptyIfNothingAfterColon() throws {
+		let res = try MMSearchQuery(from: "category:")
+		XCTAssertEqual(res, MMSearchQuery(.category("")))
+		XCTAssertEqual(MMSearchQuery(.category("")).description, "category:")
+	}
+	
 }

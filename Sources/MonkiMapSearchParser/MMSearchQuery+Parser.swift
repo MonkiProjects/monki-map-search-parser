@@ -39,7 +39,7 @@ extension MMSearchQuery: Parseable {
 extension MMSearchFilter: Parseable {
 	
 	private static let separator = character(":")
-	private static let identifier = (StringParser.alphaNumeric <|> StringParser.oneOf("_+-")).many1.stringValue
+	private static let identifier = (StringParser.alphaNumeric <|> StringParser.oneOf("_+-")).many.stringValue
 	
 	internal static let stringParser: GenericParser<String, (), Self> = {
 		return Self.word <^> (StringParser.space.noOccurence *> wordParser)
@@ -52,32 +52,32 @@ extension MMSearchFilter: Parseable {
 	}()
 	
 	internal static let isDraftParser: GenericParser<String, (), Self> = {
-		let parser = string("draft").attempt *> Self.separator *> ExtendedBoolToken.parser
+		let parser = (string("draft") *> separator).attempt *> ExtendedBoolToken.parser
 		return Self.isDraft <^> parser
 	}()
 	
 	internal static let kindParser: GenericParser<String, (), Self> = {
-		let parser = string("kind").attempt *> separator *> identifier
+		let parser = (string("kind") *> separator).attempt *> identifier
 		return Self.kind <^> parser
 	}()
 	
 	internal static let categoryParser: GenericParser<String, (), Self> = {
-		let parser = string("category").attempt *> separator *> identifier
+		let parser = (string("category") *> separator).attempt *> identifier
 		return Self.category <^> parser
 	}()
 	
 	internal static let creatorParser: GenericParser<String, (), Self> = {
-		let parser = string("creator").attempt *> separator *> UserToken.parser
+		let parser = (string("creator") *> separator).attempt *> UserToken.parser
 		return Self.creator <^> parser
 	}()
 	
 	internal static let creationParser: GenericParser<String, (), Self> = {
-		let parser = string("created").attempt  *> separator *> RangeToken<DateToken>.parser
+		let parser = (string("created")  *> separator).attempt *> RangeToken<DateToken>.parser
 		return Self.creation <^> parser
 	}()
 	
 	internal static let imagesCountParser: GenericParser<String, (), Self> = {
-		let parser = string("images").attempt *> separator *> RangeToken<UInt8>.parser
+		let parser = (string("images") *> separator).attempt *> RangeToken<UInt8>.parser
 		return Self.imagesCount <^> parser
 	}()
 	
